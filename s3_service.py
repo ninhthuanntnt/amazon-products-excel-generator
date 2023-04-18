@@ -30,15 +30,8 @@ class S3Service:
 
         while (count > 0):
             self.logger.info("Start upload s3 file: {0} with target key: {1}".format(file_path, key));
+            content_type, content_encoding = mimetypes.guess_type(file_path)
+            response = self.s3_client.upload_file(file_path, self.bucket_name, key, ExtraArgs = {"ContentType": content_type})
+            self.logger.info("Uploaded successfully")
 
-            try:
-                content_type, content_encoding = mimetypes.guess_type(file_path)
-                response = self.s3_client.upload_file(file_path, self.bucket_name, key, ExtraArgs = {"ContentType": content_type})
-                self.logger.info("Uploaded successfully")
-
-                return response
-            except Exception as e:
-                traceback.print_exc()
-                self.logger.error("Cannot upload to s3 file: {0} with target key: {1}".format(file_path, key))
-                self.logger.info("Retrying...")
-                count -= 1
+            return response
