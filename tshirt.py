@@ -6,7 +6,6 @@ import openpyxl
 from random_util import RandomUtil
 from s3_service import S3Service
 
-
 def generate_t_shirt_excel(folder_path, output_path, error, finish):
     try:
         # Init S3
@@ -34,7 +33,7 @@ def generate_t_shirt_excel(folder_path, output_path, error, finish):
 
         # 2. Get all main images from first level of that folder then upload to s3, then fill the image url into execel result file
         ## 2.1 Upload main images to S3
-        workbook = openpyxl.load_workbook(filename="result_excel.xlsx")
+        workbook = openpyxl.load_workbook(filename="tshirt_result_excel.xlsx")
         worksheet = workbook.active
 
         main_image_urls = [None]
@@ -75,7 +74,6 @@ def generate_t_shirt_excel(folder_path, output_path, error, finish):
                 if (position < len(child_image_urls)):
                     worksheet[cell] = child_image_urls[position]
 
-
         # 4. Get information from "Title", "Keyword" and "Price". Then fill it into result excel file.
 
         def add_multiple_rows(ws, column_letter: str, number_of_rows: int, start_row: int, get_each_row_data_func,
@@ -86,10 +84,10 @@ def generate_t_shirt_excel(folder_path, output_path, error, finish):
                 cell = f"{column_letter}{i + start_row}"
                 ws[cell] = get_each_row_data_func(i)
 
-
         with open(folder_path + "/" + title_file, "r") as f:
             title = f.read();
-            add_multiple_rows(worksheet, "D", len(main_image_urls), start_row, lambda i: title + RandomUtil.random_digits(6))
+            add_multiple_rows(worksheet, "D", len(main_image_urls), start_row,
+                              lambda i: title + " " + RandomUtil.random_digits(6))
 
         with open(folder_path + "/" + keyword_file, "r") as f:
             keyword = f.read();
@@ -104,24 +102,32 @@ def generate_t_shirt_excel(folder_path, output_path, error, finish):
         worksheet_wall = workbook_wall.active
 
         ignored_first_row_columns = ["J", "K", "M", "P", "AI", "AJ"]
-        data_row_letters = ["A", "B", "C", "F", "G", "H", "I", "J", "K", "L", "M", "N", "P", "V", "W", "X", "Y", "Z", "AA",
-                            "AC", "AD", "AE", "AF", "AG", "AH", "AI", "AJ", "AK", "AL", "AM", "AN", "AO", "AP", "AQ", "AR",
-                            "AS"]
+        data_row_letters = ["A", "B", "C", "F", "G", "H", "I", "J", "K", "L", "M", "N", "P", "V", "W", "X", "Y", "Z",
+                            "AA", "AC", "AD", "AE", "AF", "AG", "AH", "AI", "AJ", "AK", "AL", "AM", "AN", "AO", "AP",
+                            "AQ", "AR", "AS"]
         data_row_no = 2
         for letter in data_row_letters:
             value = worksheet_wall[f"{letter}{data_row_no}"].value
+            # Handle SKU
             if (letter == "B"):
                 prefix = value + "-"
                 add_multiple_rows(worksheet, letter, len(main_image_urls), start_row,
                                   lambda i: prefix + RandomUtil.random_string(10))
+            # Handle color name with value + autoincrement number
             elif (letter == "J"):
                 prefix = value + " "
-                add_multiple_rows(worksheet, letter, len(main_image_urls), start_row, lambda i: prefix + "{:02d}".format(i),
+                add_multiple_rows(worksheet, letter, len(main_image_urls), start_row,
+                                  lambda i: prefix + "{:02d}".format(i),
                                   True)
+            # Quantity
             elif (letter == "P"):
-                add_multiple_rows(worksheet, letter, len(main_image_urls), start_row, lambda i: random.randint(100, 999), True)
+                add_multiple_rows(worksheet, letter, len(main_image_urls), start_row,
+                                  lambda i: random.randint(100, 999), True)
+            # Parent child
             elif (letter == "AH"):
-                add_multiple_rows(worksheet, letter, len(main_image_urls), start_row, lambda i: "Parent" if i == 0 else "Child")
+                add_multiple_rows(worksheet, letter, len(main_image_urls), start_row,
+                                  lambda i: "Parent" if i == 0 else "Child")
+            # Parent SKU
             elif (letter == "AI"):
                 sku = worksheet[f"B{start_row}"].value
                 add_multiple_rows(worksheet, letter, len(main_image_urls), start_row, lambda i: sku, True)
@@ -131,12 +137,16 @@ def generate_t_shirt_excel(folder_path, output_path, error, finish):
 
         # 7. End
         now = datetime.datetime.now()
-        current_datetime = now.strftime("%d%m%Y-%H%M%S-%f")
-
-        workbook.save(f"{output_path}/{os.path.basename(folder_path)}_{current_datetime}-{RandomUtil.random_digits(3)}.xlsx")
+        current_datetime = now.strftime("%d%m%Y")
+        path_to_save = f"{output_path}/{os.path.basename(folder_path)}_{current_datetime}-{RandomUtil.random_digits(3)}.xlsx"
+        workbook.save(path_to_save)
 
         workbook.close()
         workbook_wall.close()
-        finish()
+
+        end_time = time.time();
+        finish(end_time - start_time, path_to_save)
     except Exception as e:
+        print(f"Error when upload folder: {folder_path}")
+        traceback.print_exc()
         error(e)

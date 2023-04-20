@@ -1,5 +1,6 @@
 import datetime
 import mimetypes
+import threading
 import traceback
 from logging import Logger
 
@@ -9,10 +10,6 @@ import time
 
 from random_util import RandomUtil
 
-now = datetime.datetime.now()
-current_datetime = now.strftime("%d%m%Y_%H%M")
-subfix = f"{current_datetime}_{RandomUtil.random_digits(3)}"
-print(subfix)
 class S3Service:
     s3_client: object
     bucket_name: str
@@ -21,7 +18,7 @@ class S3Service:
 
     def __init__(self, bucket_name: str):
         self.bucket_name = bucket_name
-        self.s3_client = boto3.client("s3")
+        self.s3_client = boto3.session.Session().client("s3")
         self.retries = 3
         self.logger = logging.getLogger(self.__class__.__name__)
 
@@ -33,5 +30,6 @@ class S3Service:
             content_type, content_encoding = mimetypes.guess_type(file_path)
             response = self.s3_client.upload_file(file_path, self.bucket_name, key, ExtraArgs = {"ContentType": content_type})
             self.logger.info("Uploaded successfully")
+            print("Thread ID:", threading.get_ident())
 
             return response
