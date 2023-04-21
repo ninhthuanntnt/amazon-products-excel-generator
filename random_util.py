@@ -9,5 +9,5 @@ class RandomUtil:
 
     @classmethod
     def random_string(self, number_of_characters):
-        letters_and_digits = string.ascii_uppercase + string.digits
-        return ''.join(random.choice(letters_and_digits) for i in range(number_of_characters))
+        letters = string.ascii_uppercase
+        return ''.join(random.choice(letters) for i in range(number_of_characters))
