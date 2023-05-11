@@ -1,14 +1,17 @@
 import datetime
 import os
 import random
+import time
 
 import openpyxl
+import safe_random_generater
 from random_util import RandomUtil
 from s3_service import S3Service
 
 def generate_t_shirt_excel(folder_path, output_path, error, finish):
     try:
         return_data = {"child_skus": []}
+        start_time = time.time()
         ########## Init S3
         bucket_name = "ntnt-upload"
         s3_service = S3Service(bucket_name)
@@ -38,6 +41,7 @@ def generate_t_shirt_excel(folder_path, output_path, error, finish):
         worksheet = workbook.active
 
         main_image_urls = [None]
+        main_image_filenames = [None]
         for filename in os.listdir(folder_path):
             if filename.endswith((".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp")):
                 image_path = os.path.join(folder_path, filename)
@@ -48,6 +52,7 @@ def generate_t_shirt_excel(folder_path, output_path, error, finish):
 
                 image_url = f"https://{bucket_name}.s3.amazonaws.com/{image_s3_key}"
                 main_image_urls.append(image_url);
+                main_image_filenames.append(filename)
 
         #################### 2.2 Fill main image data to excel file
         start_row = 4
@@ -116,14 +121,14 @@ def generate_t_shirt_excel(folder_path, output_path, error, finish):
                 def get_sku(i):
                     sku = prefix
                     if i == 0:
-                        sku = prefix + srg.generator.generate_from_milisecond() + "-" + RandomUtil.random_string(3)
+                        sku = prefix + safe_random_generater.generator.generate_from_milisecond() + "-" + RandomUtil.random_string(3)
                     else:
                         sku = prefix + os.path.splitext(main_image_filenames[i])[0] + "-" + RandomUtil.random_string(3)
                         return_data["child_skus"].append(sku)
                     return sku
 
                 add_multiple_rows(worksheet, letter, len(main_image_urls), start_row, get_sku)
-                return_data["child_skus"].append(sku)
+
             ########## Handle color name with value + autoincrement number
             elif (letter == "J"):
                 prefix = value + " "
@@ -158,6 +163,6 @@ def generate_t_shirt_excel(folder_path, output_path, error, finish):
         end_time = time.time();
         finish(end_time - start_time, path_to_save, return_data)
     except Exception as e:
-        print(f"Error when upload folder: {folder_path}")
+        print("Error: " + e)
         traceback.print_exc()
         error(e)

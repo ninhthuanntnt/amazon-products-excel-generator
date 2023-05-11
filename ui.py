@@ -6,6 +6,7 @@ import traceback
 from tkinter import filedialog, messagebox, ttk
 
 import coloredlogs
+from poster import generate_poster
 from safe_counter import SafeCounter
 from tshirt import generate_t_shirt_excel
 from wall import generate_wall_excel
@@ -34,10 +35,10 @@ def browse_output_folder():
     output_folder_name_label.config(text=folderpath, fg=FG_COLOR, bg=HL_COLOR, wraplength=400)
 
 
-def browse_side_excel_file():
+def browse_poster_file():
     folderpath = filedialog.askopenfilename()
-    side_excel_file_label.config(text="Selected side excel file:", fg=FG_COLOR, bg=BG_COLOR)
-    side_excel_file_name_label.config(text=folderpath, fg=FG_COLOR, bg=HL_COLOR, wraplength=400)
+    poster_file_label.config(text="Selected poster file:", fg=FG_COLOR, bg=BG_COLOR)
+    poster_file_name_label.config(text=folderpath, fg=FG_COLOR, bg=HL_COLOR, wraplength=400)
 
 
 def get_excel_type(folder_path):
@@ -61,13 +62,22 @@ def get_excel_for_multiple_folders(foder_path):
     return None
 
 
-def check_value_is_0_then_show_info(count: SafeCounter):
+def check_value_is_0_then_do_finish(count: SafeCounter, child_skus):
     if (count.value() == 0):
-        messagebox.showinfo("Successfully",
-                            f"Success generate excel files")
+        error = lambda e: messagebox.showerror("Error generate poster", traceback.format_exc())
+        finish = lambda exec_time, saved_path, return_data: (
+            messagebox.showinfo("Successfully", "Success generate excel files"),
+            submit_button.config(text="submit", state="normal")
+        )
 
-def generate_side_excel(error, finish, child_sku):
-    pass
+        input_folder = input_folder_name_label.cget("text")
+        output_path = output_folder_name_label.cget("text")
+        poster_file_path = poster_file_name_label.cget("text")
+
+        generate_poster(poster_file_path, output_path, child_skus, os.path.basename(input_folder), error, finish)
+
+def generate_poster_file(error, finish, child_sku, parent_folder_name):
+    generate_poster()
 
 def threadpool_run(input_path, output_path):
     with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -82,10 +92,12 @@ def threadpool_run(input_path, output_path):
                 error = lambda e: (messagebox.showerror("App error", traceback.format_exc()),
                                    submit_button.config(text="submit", state="normal"),
                                    executor.shutdown(wait=False))
-                finish = lambda time_exec, saved_path, return_data: (realtime_counter.decrement(),
-                                                                     check_value_is_0_then_show_info(realtime_counter),
-                                                                     submit_button.config(text="submit", state="normal"),
-                                                                     print(return_data))
+                child_skus =[]
+                finish = lambda time_exec, saved_path, return_data: (
+                    realtime_counter.decrement(),
+                    child_skus.extend(return_data["child_skus"]),
+                    check_value_is_0_then_do_finish(realtime_counter, child_skus),
+                )
                 if (excel_type == "tshirt"):
                     executor.submit(generate_t_shirt_excel, folder_path, output_path, error, finish)
                     realtime_counter.increment()
@@ -192,18 +204,18 @@ output_browse_button = tk.Button(root, text="Browse Output Folder", font=FONT, f
                                  command=browse_output_folder)
 output_browse_button.pack(pady=20)
 
-# Create a section for selecting the side excel file
-side_excel_file_label = tk.Label(root, text="No side excel file selected", font=FONT, fg=FG_COLOR, bg=BG_COLOR)
-side_excel_file_label.pack(pady=20)
+# Create a section for selecting the poster file
+poster_file_label = tk.Label(root, text="No poster file selected", font=FONT, fg=FG_COLOR, bg=BG_COLOR)
+poster_file_label.pack(pady=20)
 
-side_excel_file_name_label = tk.Label(root, text="", font=FONT, fg=FG_COLOR, bg=HL_COLOR, padx=10,
+poster_file_name_label = tk.Label(root, text="", font=FONT, fg=FG_COLOR, bg=HL_COLOR, padx=10,
                                       pady=10, width=40, height=3)
-side_excel_file_name_label.pack()
+poster_file_name_label.pack()
 
-side_excel_browse_button = tk.Button(root, text="Browse side excel file", font=FONT, fg=FG_COLOR, bg=BTN_COLOR,
+poster_browse_button = tk.Button(root, text="Browse poster file", font=FONT, fg=FG_COLOR, bg=BTN_COLOR,
                                      activebackground=BTN_HL_COLOR, bd=0, highlightthickness=0,
-                                     command=browse_side_excel_file)
-side_excel_browse_button.pack(pady=20)
+                                     command=browse_poster_file)
+poster_browse_button.pack(pady=20)
 
 # Create a button to submit the selected files
 submit_button = tk.Button(root, text="Submit", font=FONT, fg=FG_COLOR, bg=BTN_COLOR,
@@ -224,8 +236,8 @@ input_browse_button.bind("<Enter>", on_enter)
 input_browse_button.bind("<Leave>", on_leave)
 output_browse_button.bind("<Enter>", on_enter)
 output_browse_button.bind("<Leave>", on_leave)
-side_excel_browse_button.bind("<Enter>", on_enter)
-side_excel_browse_button.bind("<Leave>", on_leave)
+poster_browse_button.bind("<Enter>", on_enter)
+poster_browse_button.bind("<Leave>", on_leave)
 submit_button.bind("<Enter>", on_enter)
 submit_button.bind("<Leave>", on_leave)
 
